@@ -1,0 +1,15 @@
+name: chaotic_progress
+description: Package for displaying chaotic progress.
+version: 1.0.0
+homepage: https://github.com/roman-stakhovskyi/chaotic_progress
+
+environment:
+  sdk: '>=2.17.6 <3.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
