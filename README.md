@@ -25,7 +25,7 @@ import 'package:chaotic_progress/chaotic_progress.dart';
 
 ## Usage
 
-'''dart
+```dart
 ChaoticProgress(
   visible: true,
   backgroundColor: Colors.white.withOpacity(0.5),
@@ -50,13 +50,13 @@ ChaoticProgress(
   );
  },
 );
-'''
+```
 
 ## Parameters
 
 You can read all the information about ChaoticProgress properties below.
 
-'''dart
+```dart
 class ChaoticProgress extends StatefulWidget {
 const ChaoticProgress({
         super.key,
@@ -137,4 +137,4 @@ final Color? backgroundColor;
 
 /// Builder with which you can return a custom shape widget.
 final ChaoticProgressShapeBuilder? shapeBuilder;
-'''
+```

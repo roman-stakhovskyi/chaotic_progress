@@ -1,6 +1,6 @@
 name: chaotic_progress
-description: Package for displaying chaotic progress.
-version: 1.0.0
+description: Package for displaying chaotic progress with background and/or blur.
+version: 1.0.0+1
 homepage: https://github.com/roman-stakhovskyi/chaotic_progress
 
 environment:
