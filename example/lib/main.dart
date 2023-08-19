@@ -28,24 +28,12 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage>
     with SingleTickerProviderStateMixin {
-  var _showChaoticProgress = true;
+  var _showProgress = true;
 
   late final _animationController = AnimationController(
     vsync: this,
     duration: const Duration(seconds: 5),
-  );
-
-  @override
-  void initState() {
-    super.initState();
-    _animationController
-      ..forward()
-      ..addStatusListener((status) {
-        if (status == AnimationStatus.completed) {
-          _animationController.forward(from: 0);
-        }
-      });
-  }
+  )..repeat();
 
   @override
   Widget build(BuildContext context) {
@@ -58,33 +46,38 @@ class _HomePageState extends State<HomePage>
             style: FlutterLogoStyle.horizontal,
           ),
           ChaoticProgress(
-            visible: _showChaoticProgress,
+            visible: _showProgress,
             // backgroundColor: Colors.white.withOpacity(0.5),
             filter: ImageFilter.blur(sigmaX: 3.0, sigmaY: 3.0),
             alignCurve: Curves.linear,
             duration: const Duration(seconds: 4),
-            shapeBuilder: (context, index) {
-              return AnimatedBuilder(
-                animation: _animationController,
-                builder: (_, child) {
-                  return Transform.rotate(
-                    angle: _animationController.value * -2 * 3.1415926,
-                    child: child,
-                  );
-                },
+            shapeBuilder: (context, index, color, scale) => AnimatedBuilder(
+              animation: _animationController,
+              builder: (_, child) => Transform.rotate(
+                angle: -2 * 3.1415926 * _animationController.value,
+                child: child,
+              ),
+              child: AnimatedScale(
+                scale: scale,
+                duration: const Duration(seconds: 1),
                 child: const Icon(
                   Icons.ac_unit,
                   color: Colors.lightBlueAccent,
                   size: 36,
                 ),
-              );
-            },
+              ),
+            ),
           ),
         ],
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          setState(() => _showChaoticProgress = !_showChaoticProgress);
+          setState(() {
+            _showProgress = !_showProgress;
+            _showProgress
+                ? _animationController.repeat()
+                : _animationController.stop(canceled: false);
+          });
         },
         child: const Text('Click'),
       ),

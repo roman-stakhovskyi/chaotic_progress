@@ -7,6 +7,11 @@ import 'package:flutter/material.dart';
 typedef ChaoticProgressShapeBuilder = Widget Function(
   BuildContext context,
   int index,
+  Color color,
+
+  /// The [scale] is calculated by dividing the random size by [maxShapeSize].
+  /// The minimum value is minShapeSize/maxShapeSize and the maximum value is 1.
+  double scale,
 );
 
 class ChaoticProgress extends StatefulWidget {
@@ -34,7 +39,7 @@ class ChaoticProgress extends StatefulWidget {
     this.filter,
     this.backgroundColor,
     this.shapeBuilder,
-  })  : assert(numberOfShapes > 0 && numberOfShapes <= 500),
+  })  : assert(numberOfShapes > 0 && numberOfShapes <= 300),
         assert(
           minShapeOpacity >= 0 &&
               minShapeOpacity <= 1 &&
@@ -105,27 +110,27 @@ class ChaoticProgress extends StatefulWidget {
   ///   visible: true,
   ///   alignCurve: Curves.linear,
   ///   duration: const Duration(seconds: 5),
-  ///   shapeBuilder: (context, index) {
-  ///     return AnimatedBuilder(
-  ///       animation: _animationController,
-  ///       builder: (_, child) {
-  ///         return Transform.rotate(
-  ///           angle: _animationController.value * 2 * 3.1415926,
-  ///           child: child,
-  ///         );
-  ///       },
+  ///   shapeBuilder: (context, index, color, scale) => AnimatedBuilder(
+  ///     animation: _animationController,
+  ///     builder: (_, child) => Transform.rotate(
+  ///       angle: -2 * 3.1415926 * _animationController.value,
+  ///       child: child,
+  ///     ),
+  ///     child: AnimatedScale(
+  ///       scale: scale,
+  ///       duration: const Duration(seconds: 1),
   ///       child: const Icon(
   ///         Icons.ac_unit,
   ///         color: Colors.lightBlueAccent,
   ///         size: 36,
   ///       ),
-  ///     );
-  ///   },
-  /// ),
+  ///     ),
+  ///   ),
+  /// )
   final ChaoticProgressShapeBuilder? shapeBuilder;
 
   @override
-  State<StatefulWidget> createState() => _ChaoticProgressState();
+  State<ChaoticProgress> createState() => _ChaoticProgressState();
 }
 
 class _ChaoticProgressState extends State<ChaoticProgress>
@@ -135,14 +140,17 @@ class _ChaoticProgressState extends State<ChaoticProgress>
     duration: widget.duration,
   );
 
-  static final _random = Random();
+  final _random = Random();
 
-  static Alignment get _alignment => Alignment(
+  Alignment get _alignment => Alignment(
         _random.nextDouble() * 2 - 1,
         _random.nextDouble() * 2 - 1,
       );
 
-  double get _size => _next(widget.minShapeSize, widget.maxShapeSize);
+  double get _shapeSize => _next(
+        widget.minShapeSize,
+        widget.maxShapeSize,
+      );
 
   Color get _color {
     final index = _random.nextInt(widget.colors.length);
@@ -151,7 +159,7 @@ class _ChaoticProgressState extends State<ChaoticProgress>
     return color.withOpacity(opacity);
   }
 
-  static double _next(double min, double max) =>
+  double _next(double min, double max) =>
       _random.nextDouble() * (max - min) + min;
 
   @override
@@ -159,11 +167,17 @@ class _ChaoticProgressState extends State<ChaoticProgress>
     super.initState();
     _animationController
       ..forward()
-      ..addStatusListener((_) => _statusListener());
+      ..addListener(_listener)
+      ..addStatusListener(_statusListener);
   }
 
-  void _statusListener() {
-    if (_animationController.isCompleted) {
+  void _listener() {
+    setState(() {});
+    _animationController.removeListener(_listener);
+  }
+
+  void _statusListener(AnimationStatus status) {
+    if (status == AnimationStatus.completed) {
       _animationController.forward(from: 0);
       setState(() {});
     }
@@ -172,11 +186,10 @@ class _ChaoticProgressState extends State<ChaoticProgress>
   @override
   void didUpdateWidget(covariant ChaoticProgress oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.visible == widget.visible) return;
-    if (widget.visible) {
-      _animationController.reverse(from: 1);
-    } else {
-      _animationController.stop();
+    if (oldWidget.visible != widget.visible) {
+      widget.visible
+          ? _animationController.forward(from: 0)
+          : _animationController.stop(canceled: false);
     }
   }
 
@@ -185,28 +198,24 @@ class _ChaoticProgressState extends State<ChaoticProgress>
     Widget child = Stack(
       fit: StackFit.expand,
       children: List.generate(
+        growable: false,
         widget.numberOfShapes,
         (index) {
-          final size = _size;
-          return Positioned.fill(
-            child: AnimatedAlign(
-              heightFactor: 1,
-              widthFactor: 1,
-              alignment: _alignment,
-              curve: widget.alignCurve,
-              duration: widget.duration,
-              child: widget.shapeBuilder != null
-                  ? widget.shapeBuilder!(context, index)
-                  : AnimatedContainer(
-                      width: size,
-                      height: size,
-                      curve: widget.figureCurve,
-                      duration: widget.duration,
-                      decoration: BoxDecoration(
-                        color: _color,
-                        shape: widget.shape,
-                      ),
-                    ),
+          final shapeSize = _shapeSize;
+          final color = _color;
+          return _Shape(
+            size: shapeSize,
+            color: color,
+            shape: widget.shape,
+            alignCurve: widget.alignCurve,
+            figureCurve: widget.figureCurve,
+            duration: widget.duration,
+            alignment: _alignment,
+            child: widget.shapeBuilder?.call(
+              context,
+              index,
+              color,
+              shapeSize / widget.maxShapeSize,
             ),
           );
         },
@@ -237,7 +246,51 @@ class _ChaoticProgressState extends State<ChaoticProgress>
 
   @override
   void dispose() {
-    _animationController.dispose();
+    _animationController
+      ..removeStatusListener(_statusListener)
+      ..dispose();
     super.dispose();
+  }
+}
+
+class _Shape extends StatelessWidget {
+  const _Shape({
+    required this.size,
+    required this.color,
+    required this.shape,
+    required this.alignCurve,
+    required this.figureCurve,
+    required this.duration,
+    required this.alignment,
+    required this.child,
+  });
+
+  final double size;
+  final Color color;
+  final BoxShape shape;
+  final Curve alignCurve;
+  final Curve figureCurve;
+  final Duration duration;
+  final Alignment alignment;
+  final Widget? child;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedAlign(
+      curve: alignCurve,
+      duration: duration,
+      alignment: alignment,
+      child: child ??
+          AnimatedContainer(
+            width: size,
+            height: size,
+            curve: figureCurve,
+            duration: duration,
+            decoration: BoxDecoration(
+              color: color,
+              shape: shape,
+            ),
+          ),
+    );
   }
 }
